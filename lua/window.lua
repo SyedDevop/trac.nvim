@@ -81,6 +81,18 @@ function M.FloatingWindow:mapKey(modes, lhs, rhs)
 	})
 end
 
+---@param modes string|string[]
+---@param lhss string[]
+---@param rhs string|function
+function M.FloatingWindow:mapKeys(modes, lhss, rhs)
+	for _, lhs in ipairs(lhss) do
+		vim.keymap.set(modes, lhs, rhs, {
+			buffer = self.buf,
+			nowait = true,
+		})
+	end
+end
+
 function M.FloatingWindow:close()
 	if api.nvim_win_is_valid(self.win) then
 		api.nvim_win_close(self.win, true)
