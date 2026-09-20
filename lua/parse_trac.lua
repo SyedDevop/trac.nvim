@@ -15,11 +15,12 @@ M.task_from_ls_line = function(line)
 	}
 end
 
---- Build the `trac ls [query...]` command.
+--- Build the `trac <cmd_name> [query...]` command.
+--- @param cmd_name "ls"|"summary"
 --- @param query ?string[]
 --- @return string[]
-local function build_cmd(query)
-	local cmd = { "trac", "ls" }
+local function build_cmd(cmd_name, query)
+	local cmd = { "trac", cmd_name }
 	if query then
 		vim.list_extend(cmd, query)
 	end
@@ -46,15 +47,15 @@ end
 --- @param query ?string[]
 --- @return PathObject[]
 M.get_tasks = function(query)
-	local result = vim.system(build_cmd(query), { text = true }):wait()
+	local result = vim.system(build_cmd("ls", query), { text = true }):wait()
 	return parse_stdout(result.stdout)
 end
 
 --- Get a list of tasks from `tatr|trac ls` without blocking the UI.
 --- @param query ?string[]
---- @param callback fun(tasks: PathObject[], err: ?string)
+--- @param callback fun(tasks: PathObject[], err?: string)
 M.get_tasks_async = function(query, callback)
-	vim.system(build_cmd(query), { text = true }, function(result)
+	vim.system(build_cmd("ls", query), { text = true }, function(result)
 		vim.schedule(function()
 			if result.code ~= 0 then
 				callback({}, vim.trim(result.stderr or ("trac ls exited " .. result.code)))
