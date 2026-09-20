@@ -153,7 +153,13 @@ end
 function LsPicker:render_footer()
 	local geo = windows.ls_layout()
 	local badge = " " .. ("Task Tracker"):upper() .. " "
-	local hints = { { "Open", "<CR>" }, { "Move", "C-n/C-p" }, { "Scroll", "C-d/C-u" }, { "Close", "Esc" } }
+	local hints = {
+		{ "Open", "<CR>" },
+		{ "Open Quick Fix", "C-q" },
+		{ "Move", "C-n/C-p" },
+		{ "Scroll", "C-d/C-u" },
+		{ "Close", "Esc" },
+	}
 	local right, key_hls = "", {}
 	for i, h in ipairs(hints) do
 		if i > 1 then
@@ -276,6 +282,23 @@ function LsPicker.open()
 	end)
 	ls_pick.prompt:mapKeys({ "i", "n" }, { "<Up>", "<C-p>" }, function()
 		ls_pick:move(-1)
+	end)
+
+	ls_pick.prompt:mapKey({ "i", "n" }, "<C-q>", function()
+		---@type vim.quickfix.entry[]
+		local list = {}
+
+		for _, task in ipairs(ls_pick.state.items) do
+			list[#list + 1] = {
+				filename = task.path,
+				text = task.info,
+				col = 1,
+				lnum = 1,
+			}
+		end
+		ls_pick:close()
+		vim.fn.setloclist(0, {}, "r", { title = "Trac", items = list })
+		vim.cmd.lopen()
 	end)
 
 	ls_pick.prompt:mapKey({ "i", "n" }, "<C-u>", function()

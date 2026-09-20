@@ -1,20 +1,19 @@
 local M = {}
 
---- @alias PathObject { path: string, id: string }The path and id of the task
+--- @alias PathObject { path: string, id: string, info: string }The path and id of the task
 
 --- Parse a line from `tatr|trac ls` and return task information.
 --- @param line string
 --- @return PathObject
 M.task_from_ls_line = function(line)
-	local parts = vim.split(line, ":")
-	local path = parts[1] or ""
+	local path, _, info = line:match("^(.-):(%d+):%s*(.*)$")
 	local dir_p = vim.fs.dirname(path)
 	return {
 		id = vim.fs.basename(dir_p),
 		path = path,
+		info = vim.trim(info or ""),
 	}
 end
-
 --- Build the `trac <cmd_name> [query...]` command.
 --- @param cmd_name "ls"|"summary"|"new"
 --- @param query ?string[]
