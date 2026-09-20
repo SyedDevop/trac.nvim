@@ -47,7 +47,7 @@ LsPicker.__index = LsPicker
 --- @param tasks PathObject[]: The list of tasks id and path to show
 --- @return Cmds.LsPicker
 function LsPicker.new(tasks)
-	local win = windows.open_all()
+	local win = windows.open_ls_picker_window()
 	return setmetatable({
 		prompt = win.prompt,
 		results = win.results,
@@ -151,7 +151,7 @@ function LsPicker:render_preview()
 end
 
 function LsPicker:render_footer()
-	local geo = windows.layout()
+	local geo = windows.ls_layout()
 	local badge = " " .. ("Task Tracker"):upper() .. " "
 	local hints = { { "Open", "<CR>" }, { "Move", "C-n/C-p" }, { "Scroll", "C-d/C-u" }, { "Close", "Esc" } }
 	local right, key_hls = "", {}

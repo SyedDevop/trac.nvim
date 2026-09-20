@@ -16,7 +16,7 @@ M.task_from_ls_line = function(line)
 end
 
 --- Build the `trac <cmd_name> [query...]` command.
---- @param cmd_name "ls"|"summary"
+--- @param cmd_name "ls"|"summary"|"new"
 --- @param query ?string[]
 --- @return string[]
 local function build_cmd(cmd_name, query)
@@ -27,7 +27,7 @@ local function build_cmd(cmd_name, query)
 	return cmd
 end
 
---- Turn a `trac ls` stdout blob into a list of tasks.
+--- Turn a `trac` stdout blob into a list of string.
 --- @param stdout ?string
 --- @return PathObject[]
 local function parse_stdout(stdout)

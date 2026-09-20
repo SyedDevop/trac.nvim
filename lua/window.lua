@@ -14,23 +14,41 @@ local api = vim.api
 ---@field footer Win.LayoutGeometry
 ---@field background Win.LayoutGeometry
 
---- Calculate the geometry for each picker component.
----@return Win.Layout
-M.layout = function()
-	local cols, lines = vim.o.columns, vim.o.lines - vim.o.cmdheight
-	local W = math.floor(cols * 0.9)
-	local H = math.floor(lines * 0.85)
-	local row = math.floor((lines - H) / 2)
-	local col = math.floor((cols - W) / 2)
-	local left = math.floor(W * 0.4) -- outer width of left column
-	local right = W - left - 1 -- 1 col gap between columns
-	local pane_h = H - 1 -- last line is the footer bar
+--- Calculate the geometry for a centered floating window.
+---
+--- The window is sized relative to the current editor dimensions:
+--- - Width: 90% of the available columns.
+--- - Height: 85% of the available lines, excluding `cmdheight`.
+--- - Position: centered horizontally and vertically.
+--- used to position the floating window.
+--- @return Win.LayoutGeometry geometry The width, height, row, and column
+--- @see Win.LayoutGeometry
+M.float_geometry = function()
+	local cols = vim.o.columns
+	local lines = vim.o.lines - vim.o.cmdheight
+	local width = math.floor(cols * 0.9)
+	local height = math.floor(lines * 0.85)
 	return {
-		prompt = { row = row, col = col, width = W - 2, height = 1 },
-		results = { row = row + 3, col = col, width = left - 2, height = pane_h - 3 - 2 },
-		preview = { row = row + 3, col = col + left + 1, width = right - 2, height = pane_h - 3 - 2 },
-		footer = { row = row + pane_h, col = col, width = W, height = 1 },
-		background = { row = row, col = col, width = W, height = H },
+		width = width,
+		height = height,
+		row = math.floor((lines - height) / 2),
+		col = math.floor((cols - width) / 2),
+	}
+end
+
+--- Calculate the geometry for `ls_picker` component.
+---@return Win.Layout
+M.ls_layout = function()
+	local f_geo = M.float_geometry()
+	local left = math.floor(f_geo.width * 0.4) -- outer width of left column
+	local right = f_geo.width - left - 1 -- 1 col gap between columns
+	local pane_h = f_geo.height - 1 -- last line is the footer bar
+	return {
+		prompt = { row = f_geo.row, col = f_geo.col, width = f_geo.width - 2, height = 1 },
+		results = { row = f_geo.row + 3, col = f_geo.col, width = left - 2, height = pane_h - 3 - 2 },
+		preview = { row = f_geo.row + 3, col = f_geo.col + left + 1, width = right - 2, height = pane_h - 3 - 2 },
+		footer = { row = f_geo.row + pane_h, col = f_geo.col, width = f_geo.width, height = 1 },
+		background = { row = f_geo.row, col = f_geo.col, width = f_geo.width, height = f_geo.height },
 	}
 end
 
@@ -119,7 +137,7 @@ end
 --- Create all picker windows.
 ---@return Win.AllWindows
 function M.open_all()
-	local geo = M.layout()
+	local geo = M.ls_layout()
 
 	---@type Win.AllWindows
 	local windows = {}
