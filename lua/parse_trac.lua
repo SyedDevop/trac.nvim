@@ -19,7 +19,7 @@ end
 --- @param cmd_name "ls"|"summary"|"new"
 --- @param query ?string[]
 --- @return string[]
-local function build_cmd(cmd_name, query)
+M.build_cmd = function(cmd_name, query)
 	local cmd = { "trac", cmd_name }
 	if query then
 		vim.list_extend(cmd, query)
@@ -30,7 +30,7 @@ end
 --- Turn a `trac` stdout blob into a list of string.
 --- @param stdout ?string
 --- @return PathObject[]
-local function parse_stdout(stdout)
+M.parse_stdout = function(stdout)
 	local tasks = {}
 	if not stdout or stdout == "" then
 		return tasks
@@ -47,21 +47,21 @@ end
 --- @param query ?string[]
 --- @return PathObject[]
 M.get_tasks = function(query)
-	local result = vim.system(build_cmd("ls", query), { text = true }):wait()
-	return parse_stdout(result.stdout)
+	local result = vim.system(M.build_cmd("ls", query), { text = true }):wait()
+	return M.parse_stdout(result.stdout)
 end
 
 --- Get a list of tasks from `tatr|trac ls` without blocking the UI.
 --- @param query ?string[]
 --- @param callback fun(tasks: PathObject[], err?: string)
 M.get_tasks_async = function(query, callback)
-	vim.system(build_cmd("ls", query), { text = true }, function(result)
+	vim.system(M.build_cmd("ls", query), { text = true }, function(result)
 		vim.schedule(function()
 			if result.code ~= 0 then
 				callback({}, vim.trim(result.stderr or ("trac ls exited " .. result.code)))
 				return
 			end
-			callback(parse_stdout(result.stdout))
+			callback(M.parse_stdout(result.stdout))
 		end)
 	end)
 end

@@ -12,4 +12,13 @@ function M.attach_close_keys(win, buf, keys)
 	end
 end
 
+--- Set the lines in the picker window
+--- @param buf integer
+--- @param lines string[]
+function M.set_lines(buf, lines)
+	vim.bo[buf].modifiable = true
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	vim.bo[buf].modifiable = false
+end
+
 return M
