@@ -136,7 +136,7 @@ end
 
 --- Create all picker windows.
 ---@return Win.AllWindows
-function M.open_all()
+function M.open_ls_picker_window()
 	local geo = M.ls_layout()
 
 	---@type Win.AllWindows
