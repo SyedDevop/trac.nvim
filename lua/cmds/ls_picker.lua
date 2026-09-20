@@ -7,6 +7,7 @@ local sel_ns = api.nvim_create_namespace("trac_ls_picker_selection")
 
 local PROMPT = "> "
 local MAX_SHOWN = 500
+local DEBOUNCE_MS = 100
 local function set_hl()
 	local links = {
 		TracLsPickerBorder = "FloatBorder",
@@ -38,7 +39,8 @@ end
 --- @field preview Win.FloatingWindows
 --- @field footer Win.FloatingWindows
 --- @field background Win.FloatingWindows
---- @field state { all: PathObject[], items: PathObject[], closed: boolean, selected: integer} The current state of the picker.
+--- @field debounce uv.uv_timer_t
+--- @field state { all: PathObject[], items: PathObject[], closed: boolean, selected: integer, query_gen: integer} The current state of the picker.
 local LsPicker = {}
 LsPicker.__index = LsPicker
 
@@ -52,11 +54,13 @@ function LsPicker.new(tasks)
 		preview = win.preview,
 		footer = win.footer,
 		background = win.background,
+		debounce = (vim.uv or vim.loop).new_timer(),
 		state = {
 			all = tasks,
 			items = tasks,
 			closed = false,
 			selected = 1,
+			query_gen = 0,
 		},
 	}, LsPicker)
 end
@@ -78,10 +82,16 @@ end
 
 --- Update the prompt with the current number of items
 function LsPicker:selection_stat()
-	-- "15 / 102" counter, right-aligned inside the prompt
+	-- "15 | 102" counter, right-aligned inside the prompt; shows "shown/total"
+	-- when the list is truncated to MAX_SHOWN so the count isn't misleading.
+	local total = #self.state.items
+	local shown = math.min(total, MAX_SHOWN)
+	local text = shown < total and (" %d | %d/%d "):format(self.state.selected, shown, total)
+		or (" %d | %d "):format(self.state.selected, total)
+
 	api.nvim_buf_clear_namespace(self.prompt.buf, ns, 0, -1)
 	api.nvim_buf_set_extmark(self.prompt.buf, ns, 0, 0, {
-		virt_text = { { (" %d | %d "):format(self.state.selected, #self.state.items), "TracLsPickerCounter" } },
+		virt_text = { { text, "TracLsPickerCounter" } },
 		virt_text_pos = "right_align",
 	})
 end
@@ -111,16 +121,21 @@ end
 
 function LsPicker:render_preview()
 	local task = self:selected_item()
+	local buf = self.preview.buf
 	if not task then
+		set_lines(buf, {})
+		api.nvim_win_set_config(self.preview.win, {
+			title = { { " No results ", "TracLsPickerPreviewTitle" } },
+			title_pos = "center",
+		})
 		return
 	end
 
-	local buf = self.preview.buf
 	local ok, lines = pcall(vim.fn.readfile, task.path or "", "", 1000)
 	set_lines(buf, (task.id and ok) and lines or {})
 
 	api.nvim_win_set_config(self.preview.win, {
-		title = { { task.id, "TracPreviewTitle" } },
+		title = { { task.id, "TracLsPickerPreviewTitle" } },
 		title_pos = "center",
 	})
 	api.nvim_win_set_cursor(self.preview.win, { 1, 0 })
@@ -162,18 +177,49 @@ function LsPicker:render_footer()
 	end
 end
 
-function LsPicker:update()
-	local line = api.nvim_buf_get_lines(self.prompt.buf, 0, 1, false)[1] or ""
-	local query = line:sub(#PROMPT + 1)
-	local new_item = parse_trac.get_tasks({ query })
-	if #new_item > 0 then
-		self.state.items = new_item
-	else
-		self.state.items = self.state.all
-	end
+--- Apply a freshly computed item list and redraw.
+--- @param items PathObject[]
+function LsPicker:apply_items(items)
+	self.state.items = items
 	self.state.selected = 1
 	self:render_results()
 	self:render_preview()
+end
+
+function LsPicker:update()
+	local line = api.nvim_buf_get_lines(self.prompt.buf, 0, 1, false)[1] or ""
+	local query = vim.trim(line:sub(#PROMPT + 1))
+
+	self.debounce:stop()
+
+	-- Empty query: just show everything, no need to shell out at all.
+	if query == "" then
+		self:apply_items(self.state.all)
+		return
+	end
+
+	-- Bump the generation before scheduling so a stale response (one that
+	-- resolves after a newer keystroke already fired another request) can
+	-- be detected and dropped instead of clobbering newer results.
+	self.state.query_gen = self.state.query_gen + 1
+	local gen = self.state.query_gen
+
+	self.debounce:start(
+		DEBOUNCE_MS,
+		0,
+		vim.schedule_wrap(function()
+			parse_trac.get_tasks_async({ query }, function(items, err)
+				if self.state.closed or gen ~= self.state.query_gen then
+					return -- picker closed, or a newer query has already superseded this one
+				end
+				if err then
+					vim.notify("trac ls: " .. err, vim.log.levels.ERROR)
+				end
+				-- A real, possibly empty, match list — no falling back to "all".
+				self:apply_items(items)
+			end)
+		end)
+	)
 end
 
 function LsPicker:move(delta)
@@ -199,6 +245,8 @@ function LsPicker:close()
 		return
 	end
 	self.state.closed = true
+	self.debounce:stop()
+	self.debounce:close()
 	vim.cmd.stopinsert()
 	self.background:close()
 	self.prompt:close()
