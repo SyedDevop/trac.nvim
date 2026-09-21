@@ -143,9 +143,9 @@ function M.open_ls_picker_window()
 	local windows = {}
 
 	local configs = {
-		prompt = { title = " files ", title_pos = "center", zindex = 51 },
+		prompt = { title = " Query: `OPEN` ", title_pos = "center", zindex = 51 },
 		results = { title = " Results ", title_pos = "center" },
-		preview = { title = " Preview ", title_pos = "center" },
+		preview = { title = " Task ", title_pos = "center" },
 		footer = { border = "none" },
 		background = { border = "none", zindex = 49 },
 	}

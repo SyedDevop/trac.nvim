@@ -33,14 +33,15 @@ local function set_lines(buf, lines)
 	vim.bo[buf].modifiable = false
 end
 
---- @class Cmds.LsPicker
---- @field prompt Win.FloatingWindows
---- @field results Win.FloatingWindows
---- @field preview Win.FloatingWindows
---- @field footer Win.FloatingWindows
---- @field background Win.FloatingWindows
---- @field debounce uv.uv_timer_t
---- @field state { all: PathObject[], items: PathObject[], closed: boolean, selected: integer, query_gen: integer} The current state of the picker.
+---@class Cmds.LsPicker
+---@field prompt Win.FloatingWindows
+---@field results Win.FloatingWindows
+---@field preview Win.FloatingWindows
+---@field footer Win.FloatingWindows
+---@field background Win.FloatingWindows
+---@field debounce uv.uv_timer_t
+---@field tasks_status "OPEN"|"CLOSED"
+---@field state { all: PathObject[], items: PathObject[], closed: boolean, selected: integer, query_gen: integer} The current state of the picker.
 local LsPicker = {}
 LsPicker.__index = LsPicker
 
@@ -55,6 +56,7 @@ function LsPicker.new(tasks)
 		footer = win.footer,
 		background = win.background,
 		debounce = (vim.uv or vim.loop).new_timer(),
+		tasks_status = "OPEN",
 		state = {
 			all = tasks,
 			items = tasks,
@@ -63,6 +65,20 @@ function LsPicker.new(tasks)
 			query_gen = 0,
 		},
 	}, LsPicker)
+end
+
+---Is the task status currently set to "CLOSED"
+---@return boolean
+function LsPicker:is_task_closed()
+	return self.tasks_status == "CLOSED"
+end
+
+function LsPicker:toggle_task_status()
+	if self.tasks_status == "OPEN" then
+		self.tasks_status = "CLOSED"
+	else
+		self.tasks_status = "OPEN"
+	end
 end
 
 function LsPicker:set_win_and_buf_options()
@@ -156,6 +172,7 @@ function LsPicker:render_footer()
 	local hints = {
 		{ "Open", "<CR>" },
 		{ "Open Quick Fix", "C-q" },
+		{ "Toggle Status", "C-t" },
 		{ "Move", "C-n/C-p" },
 		{ "Scroll", "C-d/C-u" },
 		{ "Close", "Esc" },
@@ -209,12 +226,12 @@ function LsPicker:update()
 	-- be detected and dropped instead of clobbering newer results.
 	self.state.query_gen = self.state.query_gen + 1
 	local gen = self.state.query_gen
-
+	local closed_flag = self:is_task_closed() and "-c" or ""
 	self.debounce:start(
 		DEBOUNCE_MS,
 		0,
 		vim.schedule_wrap(function()
-			parse_trac.get_tasks_async({ query }, function(items, err)
+			parse_trac.get_tasks_async({ query, closed_flag }, function(items, err)
 				if self.state.closed or gen ~= self.state.query_gen then
 					return -- picker closed, or a newer query has already superseded this one
 				end
@@ -280,7 +297,16 @@ function LsPicker.open()
 	ls_pick.prompt:mapKeys({ "i", "n" }, { "<Down>", "<C-n>" }, function()
 		ls_pick:move(1)
 	end)
-	ls_pick.prompt:mapKeys({ "i", "n" }, { "<Up>", "<C-p>" }, function()
+
+	ls_pick.prompt:mapKey({ "i", "n" }, "<C-t>", function()
+		ls_pick:toggle_task_status()
+		ls_pick:update()
+		api.nvim_win_set_config(ls_pick.prompt.win, {
+			title = (" Query: `%s` "):format(ls_pick.tasks_status),
+		})
+	end)
+
+	ls_pick.prompt:mapKey({ "i", "n" }, "<C-p>", function()
 		ls_pick:move(-1)
 	end)
 
