@@ -1,3 +1,5 @@
+local config = require("config")
+
 local M = {}
 
 --- @alias PathObject { path: string, id: string, info: string }The path and id of the task
@@ -19,7 +21,7 @@ end
 --- @param query ?string[]
 --- @return string[]
 M.build_cmd = function(cmd_name, query)
-	local cmd = { "trac", cmd_name }
+	local cmd = { config.options.program, cmd_name }
 	if query then
 		vim.list_extend(cmd, query)
 	end

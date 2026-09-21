@@ -73,6 +73,14 @@ function LsPicker:is_task_closed()
 	return self.tasks_status == "CLOSED"
 end
 
+---Append the "-c" flag to the query
+---@param query string[]
+function LsPicker:append_closed_flag(query)
+	if self:is_task_closed() then
+		table.insert(query, "-c")
+	end
+end
+
 function LsPicker:toggle_task_status()
 	if self.tasks_status == "OPEN" then
 		self.tasks_status = "CLOSED"
@@ -226,12 +234,13 @@ function LsPicker:update()
 	-- be detected and dropped instead of clobbering newer results.
 	self.state.query_gen = self.state.query_gen + 1
 	local gen = self.state.query_gen
-	local closed_flag = self:is_task_closed() and "-c" or ""
+	local quires = vim.split(query, " ")
+	self:append_closed_flag(quires)
 	self.debounce:start(
 		DEBOUNCE_MS,
 		0,
 		vim.schedule_wrap(function()
-			parse_trac.get_tasks_async({ query, closed_flag }, function(items, err)
+			parse_trac.get_tasks_async(quires, function(items, err)
 				if self.state.closed or gen ~= self.state.query_gen then
 					return -- picker closed, or a newer query has already superseded this one
 				end
@@ -294,6 +303,9 @@ function LsPicker.open()
 	local ls_pick = LsPicker.new(parse_trac.get_tasks({}))
 	ls_pick:set_win_and_buf_options()
 
+	ls_pick.prompt:mapKeys({ "i", "n" }, { "<Up>", "<C-p>" }, function()
+		ls_pick:move(-1)
+	end)
 	ls_pick.prompt:mapKeys({ "i", "n" }, { "<Down>", "<C-n>" }, function()
 		ls_pick:move(1)
 	end)
@@ -304,10 +316,6 @@ function LsPicker.open()
 		api.nvim_win_set_config(ls_pick.prompt.win, {
 			title = (" Query: `%s` "):format(ls_pick.tasks_status),
 		})
-	end)
-
-	ls_pick.prompt:mapKey({ "i", "n" }, "<C-p>", function()
-		ls_pick:move(-1)
 	end)
 
 	ls_pick.prompt:mapKey({ "i", "n" }, "<C-q>", function()
