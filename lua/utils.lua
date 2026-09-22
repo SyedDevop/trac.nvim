@@ -34,4 +34,10 @@ function M.is_treesitter_active()
 	return has_highlighter and has_parser
 end
 
+---@param line string
+---@return string
+function M.strip_comment_prefix(line)
+	local prefix = vim.trim(vim.split(vim.bo.commentstring, "%s")[1] or "")
+	return (line:gsub("^%s*" .. vim.pesc(prefix) .. "%s*", "", 1))
+end
 return M

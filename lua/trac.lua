@@ -10,6 +10,15 @@ end
 M.new_task = function()
 	require("cmds.new").open()
 end
+
+M.find_references = function()
+	require("cmds.find").find_references()
+end
+
+M.goto_task_file = function()
+	require("cmds.find").goto_file()
+end
+
 ---@class Trac.SetupOpts
 ---@field program? "trac"|"tatr" The executable to use for task management.
 

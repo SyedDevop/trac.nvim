@@ -1,12 +1,6 @@
 local parse_trac = require("parse_trac")
+local utils = require("utils")
 local M = {}
-
----@param line string
----@return string
-local function strip_comment_prefix(line)
-	local prefix = vim.trim(vim.split(vim.bo.commentstring, "%s")[1] or "")
-	return (line:gsub("^%s*" .. vim.pesc(prefix) .. "%s*", "", 1))
-end
 
 M.open = function()
 	local block = parse_trac.get_todo_block()
@@ -21,7 +15,7 @@ M.open = function()
 	---@type string[]
 	local body = {}
 	for _, raw_line in ipairs(block.block) do
-		local line = strip_comment_prefix(raw_line)
+		local line = utils.strip_comment_prefix(raw_line)
 		if title == nil then
 			local lower_line = line:lower()
 			if vim.startswith(lower_line, "todo") then
