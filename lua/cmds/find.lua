@@ -39,7 +39,14 @@ M.goto_file = function()
 	end)
 end
 
-M.find_references = function()
+--- Find all code references to the task on the current line.
+---
+--- The current line must contain a task HUUID, for example:
+--- `// TASK(20260922-075442): Add tests`
+---
+--- Searches the codebase for the HUUID and opens the matches
+--- in the quickfix list.
+M.find_task_references = function()
 	local id = get_id()
 	if id == nil then
 		return
@@ -48,4 +55,33 @@ M.find_references = function()
 	vim.cmd.copen()
 end
 
+--- Find all tasks referenced by the current task file.
+---
+--- The current file must be a `TASKS.md` file inside a task
+--- directory named by its HUUID, for example:
+--- `20260922-075442/TASKS.md`
+---
+--- Extracts the HUUIDs referenced by the task file and searches
+--- the codebase for their references.
+M.find_referenced_tasks = function()
+	local cmd = parse_trac.build_cmd("id")
+	local cwd = vim.fn.expand("%:p:h")
+	local result = vim.system(cmd, { text = true, cwd = cwd }):wait()
+	if result.code ~= 0 then
+		vim.notify(("Find referenced tasks: " .. result.stderr), vim.log.levels.WARN, { title = "Trac (Task Tracker)" })
+		return
+	end
+	if result.stdout == nil or result.stdout == "" then
+		vim.notify("Find referenced tasks: Unknown error", vim.log.levels.WARN, { title = "Trac (Task Tracker)" })
+		return
+	end
+
+	vim.cmd.grep(vim.trim(result.stdout))
+
+	if #vim.fn.getqflist() == 0 then
+		vim.notify("No references found", vim.log.levels.INFO, { title = "Trac (Task Tracker)" })
+		return
+	end
+	vim.cmd.copen()
+end
 return M

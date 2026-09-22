@@ -18,7 +18,7 @@ M.task_from_ls_line = function(line)
 	}
 end
 --- Build the `trac <cmd_name> [query...]` command.
---- @param cmd_name "ls"|"summary"|"new"|"find"
+--- @param cmd_name "ls"|"summary"|"new"|"find"|"id"
 --- @param query ?string[]
 --- @return string[]
 M.build_cmd = function(cmd_name, query)
