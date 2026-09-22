@@ -7,6 +7,9 @@ M.summary_open = function()
 	require("cmds.summary").open()
 end
 
+M.new_task = function()
+	require("cmds.new").open()
+end
 ---@class Trac.SetupOpts
 ---@field program? "trac"|"tatr" The executable to use for task management.
 

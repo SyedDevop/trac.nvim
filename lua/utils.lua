@@ -21,4 +21,17 @@ function M.set_lines(buf, lines)
 	vim.bo[buf].modifiable = false
 end
 
+function M.is_treesitter_active()
+	local bufnr = vim.api.nvim_get_current_buf()
+
+	-- Check if a highlighter is actively running on this buffer
+	local has_highlighter = vim.treesitter.highlighter.active[bufnr] ~= nil
+
+	-- Check if a parser even exists for this file type
+	local lang = vim.bo[bufnr].filetype
+	local has_parser = vim.treesitter.language.has_parser(lang)
+
+	return has_highlighter and has_parser
+end
+
 return M
